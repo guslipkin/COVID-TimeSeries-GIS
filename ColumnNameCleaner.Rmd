@@ -1,0 +1,32 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# Load libraries used
+library(stringr)
+library(lubridate)
+```
+
+
+```{r}
+# read in the file to be fixed
+df <- read.csv("../COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
+# get the column names and remove some special characters
+cols <- colnames(df)
+cols <- str_replace_all(cols, "[_X]*", "")
+cols <- str_replace_all(cols, "\\.", "_")
+# # checks to see if file has been corrected already
+# if(length(cols[grepl("D[-|\\.]", cols)]) >= 1)
+#   errorCondition("This file has already been corrected")
+# # create a new vector of column names of the column names that aren't dates
+# #  and column names that are dates but in character format with a character prefix
+# newCols <- c(cols[!grepl("[0-9]{2,}", cols)], paste0(as.character(mdy(cols[grepl("[0-9]{2,}", cols)]))))
+# # assign the new column names
+# colnames(df) <- newCols
+colnames(df) <- cols
+# write the dataframe back to the original document
+write.csv(df, "../COVID-19/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv")
+```
+
