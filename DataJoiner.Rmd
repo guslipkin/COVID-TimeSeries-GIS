@@ -9,6 +9,7 @@ library(data.table)
 library(tidyverse)
 ```
 
+
 ```{r}
 # use fread for fast reading of data csv files
   # ColumnNameCleaner.rmd should be run first
@@ -42,6 +43,18 @@ masking[, FIPS := sprintf("%05d", COUNTYFP)]
 
 
 ```{r}
+# drops unneeded columns
+cases <- cases[, !c("V1", "UID", "iso2", "iso3", "code3", "CombinedKey")]
+# selects the most recent population estimate (2019) and drops what will be redundant columns
+years2019 <- grep("^([^0-9]*)$|2019", colnames(pop))
+pop <- pop[, ..years2019][, !c("SUMLEV", "STATE", "COUNTY", "STNAME", "CTYNAME")]
+# drops what will be redundant columns
+distancing <- distancing[, !c("OBJECTID", "state_fips", "state_name", "county_fips", "county_name")]
+masking <- masking[, !c("COUNTYFP")]
+```
+
+
+```{r}
 # set the FIPS column as the key for faster data.table operations
 # time series
 setkey(cases, FIPS)
@@ -59,6 +72,8 @@ pivot_wider(vaccineCounty, names_from = Date, values_from = )
 
 
 ```{r}
-write.csv(cases[pop,][distancing,][masking,], "Data/casesPopDistancingMasking.csv")
+csv <- cases[pop,][distancing,][masking,]
+write.csv(cases[pop,][distancing,][masking,], "Data/casesPopDistancingMasking.csv", row.names = FALSE)
+csv
 ```
 

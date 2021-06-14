@@ -22,7 +22,7 @@ cols <- str_replace_all(cols, "[_X]*", "")
 #   errorCondition("This file has already been corrected")
 # # create a new vector of column names of the column names that aren't dates
 # #  and column names that are dates but in character format with a character prefix
-newCols <- c(cols[!grepl("[0-9]{2,}", cols)], paste0(as.character(str_replace_all(mdy(cols[grepl("[0-9]{2,}", cols)]), "-", "_"))))
+newCols <- c(cols[!grepl("[0-9]{2,}", cols)], paste0("D", as.character(str_replace_all(mdy(cols[grepl("[0-9]{2,}", cols)]), "-", "_"))))
 # # assign the new column names
 # colnames(df) <- newCols
 colnames(df) <- newCols
