@@ -1,0 +1,64 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# load data.table for faster operations
+library(data.table)
+library(tidyverse)
+```
+
+```{r}
+# use fread for fast reading of data csv files
+  # ColumnNameCleaner.rmd should be run first
+cases <- fread("Data/time_series_covid19_confirmed_US.csv")
+vaccineCounty <- fread("Data/Vaccination/COVID-19_Vaccinations_in_the_United_States_County.csv")
+#vaccineJurisdiction <- fread("Data/Vaccination/COVID-19_Vaccinations_in_the_United_States_Jurisdiction.csv")
+pop <- fread("Data/Population/co-est2019-alldata.csv")
+distancing <- fread("Data/Distancing/Unacast_Social_Distancing_Grades.csv")
+masking <- fread("Data/Masking/mask-use-by-county.csv")
+```
+
+
+```{r}
+# preview the data tables
+head(cases)
+head(vaccineCounty)
+#head(vaccineJurisdiction)
+head(distancing)
+head(masking)
+head(pop)
+```
+
+
+```{r}
+# either create or fix the FIPS column using available data
+cases[, FIPS := sprintf("%05d", cases[,FIPS])]
+pop[, FIPS := sprintf("%02d%03d", pop[,STATE], pop[,COUNTY])]
+distancing[, FIPS := sprintf("%05d", county_fips)]
+masking[, FIPS := sprintf("%05d", COUNTYFP)]
+```
+
+
+```{r}
+# set the FIPS column as the key for faster data.table operations
+# time series
+setkey(cases, FIPS)
+setkey(vaccineCounty, FIPS)
+setkey(distancing, FIPS)
+# not time series
+setkey(masking, FIPS)
+setkey(pop, FIPS)
+```
+
+
+```{r}
+pivot_wider(vaccineCounty, names_from = Date, values_from = )
+```
+
+
+```{r}
+write.csv(cases[pop,][distancing,][masking,], "Data/casesPopDistancingMasking.csv")
+```
+

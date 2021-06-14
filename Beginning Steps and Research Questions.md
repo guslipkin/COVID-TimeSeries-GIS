@@ -14,6 +14,7 @@
      - https://coronavirus-resources.esri.com/datasets/disasterresponse::unacast-social-distancing-grades/about
    - Mask usage
      - https://www.nytimes.com/interactive/2020/07/17/upshot/coronavirus-face-mask-map.html
+       - https://github.com/nytimes/covid-19-data/tree/master/mask-use
      - https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0249891#sec002
    - Vaccination rates
      - https://ourworldindata.org/covid-vaccinations
