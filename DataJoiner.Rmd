@@ -37,7 +37,8 @@ head(pop)
 # either create or fix the FIPS column using available data
 cases[, FIPS := sprintf("%05d", cases[,FIPS])]
 pop[, FIPS := sprintf("%02d%03d", pop[,STATE], pop[,COUNTY])]
-distancing[, FIPS := sprintf("%05d", county_fips)]
+# create a population density column too
+distancing[, c("FIPS", "popDensity") := .(sprintf("%05d", county_fips), county_population / Shape__Area)]
 masking[, FIPS := sprintf("%05d", COUNTYFP)]
 ```
 
@@ -51,6 +52,24 @@ pop <- pop[, ..years2019][, !c("SUMLEV", "STATE", "COUNTY", "STNAME", "CTYNAME")
 # drops what will be redundant columns
 distancing <- distancing[, !c("OBJECTID", "state_fips", "state_name", "county_fips", "county_name")]
 masking <- masking[, !c("COUNTYFP")]
+```
+
+
+```{r}
+totalCases <- grep("[0-9]{4}", colnames(cases))
+cases[, TotalCases := rowSums(cases[, ..totalCases], na.rm = TRUE)]
+```
+
+
+```{r}
+grades <- c("A+"=4.3,"A"=4,"A-"=3.7,"B+"=3.3,"B"=3,"B-"=2.7, "C+"=2.3,"C"=2,"C-"=1.7,"D+"=1.3,"D"=1,"D-"= 0.7, "F"=0)
+
+gfunc <- function(x) {
+  grades[as.character(x)]
+}
+
+distancing[, c("grade_total", "grade_distance", "grade_visitation", "grade_encounters") :=
+             .(gfunc(grade_total), gfunc(grade_distance), gfunc(grade_visitation), gfunc(grade_encounters))]
 ```
 
 
@@ -73,7 +92,10 @@ pivot_wider(vaccineCounty, names_from = Date, values_from = )
 
 ```{r}
 csv <- cases[pop,][distancing,][masking,]
-write.csv(cases[pop,][distancing,][masking,], "Data/casesPopDistancingMasking.csv", row.names = FALSE)
+write.csv(csv, "Data/casesPopDistancingMasking.csv", row.names = FALSE)
+openxlsx::write.xlsx(csv, "Data/casesPopDistancingMasking.xlsx", overwrite = TRUE)
+dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}", colnames(csv))
+openxlsx::write.xlsx(csv[, !..dates], "Data/noDates.xlsx", overwrite = TRUE)
 csv
 ```
 

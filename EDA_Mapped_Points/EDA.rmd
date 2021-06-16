@@ -1,0 +1,18 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(plm)
+library(tidyverse)
+df <- read.csv("../Data/casesPopDistancingMasking.csv")
+head(df)
+```
+
+
+```{r}
+plm(log(TotalCases) ~ log(DEATHS2019) + log(county_population) + log(Shape__Area) + log(grade_total) + NEVER + RARELY + SOMETIMES, 
+    data = df[rowSums(is.na(df)) == 0,1])
+```
+
