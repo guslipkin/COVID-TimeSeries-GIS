@@ -23,6 +23,14 @@
    - Population
      - https://www.census.gov/data/datasets/time-series/demo/popest/2010s-counties-total.html#par_textimage_70769902
 
+### June 16 Update
+
+1. Check first research sub-question. Make sure to prioritize case count, social distancing/mobility, climate data by day.
+   1. Also get monthly data
+2. Choose a handful of "model" counties that are representative of county size and population density
+3. Can use mask data but only for July 2-14 because that is when the survey is from
+4. 
+
 ## Research Questions
 
 - What if we didn't have the vaccine right now? How would we model spread? Climate variables (temp, humidity, precip), population density, social distancing, masking. How is this different from real life? Can we change vaccination rates in the model?
