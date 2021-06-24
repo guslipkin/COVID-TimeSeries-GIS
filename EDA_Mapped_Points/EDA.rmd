@@ -6,13 +6,76 @@ output: html_notebook
 ```{r}
 library(plm)
 library(tidyverse)
-df <- read.csv("../Data/casesPopDistancingMasking.csv")
+library(data.table)
+library(broom)
+df <- fread("../Data/casesPopDistancingMasking.csv")
 head(df)
 ```
 
 
 ```{r}
-plm(log(TotalCases) ~ log(DEATHS2019) + log(county_population) + log(Shape__Area) + log(grade_total) + NEVER + RARELY + SOMETIMES, 
-    data = df[rowSums(is.na(df)) == 0,1])
+normalize <- function(x) {
+  return((x-min(x, na.rm = TRUE))/(max(x, na.rm = TRUE)-min(x, na.rm = TRUE)))
+}
+```
+
+
+```{r}
+dt <- df[, .(TotalCases, county_population, grade_total, popDensity, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)]
+# dt <- dt[, c("TotalCases", "county_population","popDensity", "grade_total") := 
+#            .(log(TotalCases), log(county_population), log(popDensity) * 10000, grade_total * 10)]
+dt <- data.table(apply(dt[TotalCases > -Inf,], 2, normalize))
+# dt <- normalize(dt[TotalCases > -Inf,])
+dt[, FIPS := df[TotalCases > -Inf ,FIPS]]
+sums <- data.frame(do.call(cbind, lapply(dt[,.(TotalCases, county_population, grade_total, popDensity, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)], summary)))
+rownames(sums) <- c("Min", "Q1", "Median", "Mean", "Q3", "Max")
+sums
+```
+
+
+```{r}
+# Finding the lower bound county
+offset <- .137
+lower <- dt[(TotalCases > (sums["Q1", "TotalCases"]-offset) & TotalCases < (sums["Q1", "TotalCases"]+offset)) & 
+     (county_population > (sums["Q1", "county_population"]-offset) & county_population < (sums["Q1", "county_population"]+offset)) & 
+     (popDensity > (sums["Q1", "popDensity"]-(offset*.01)) & popDensity < (sums["Q1", "popDensity"]+(offset*.01))) &
+     (NEVER > (sums["Q1", "NEVER"]-offset) & NEVER < (sums["Q1", "NEVER"]+offset)) &
+     (RARELY > (sums["Q1", "RARELY"]-offset) & RARELY < (sums["Q1", "RARELY"]+offset)) &
+     (SOMETIMES > (sums["Q1", "SOMETIMES"]-offset) & SOMETIMES < (sums["Q1", "SOMETIMES"]+offset)) &
+     (FREQUENTLY > (sums["Q1", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Q1", "FREQUENTLY"]+offset)) &
+     (ALWAYS > (sums["Q1", "ALWAYS"]-offset) & ALWAYS < (sums["Q1", "ALWAYS"]+offset)), FIPS]
+lower
+
+# Finding the median county
+offset <- .034
+median <- dt[(TotalCases > (sums["Median", "TotalCases"]-offset) & TotalCases < (sums["Median", "TotalCases"]+offset)) &
+     (county_population > (sums["Median", "county_population"]-offset) & county_population < (sums["Median", "county_population"]+offset)) &
+     (popDensity > (sums["Median", "popDensity"]-offset) & popDensity < (sums["Median", "popDensity"]+offset)) &
+     (NEVER > (sums["Median", "NEVER"]-offset) & NEVER < (sums["Median", "NEVER"]+offset)) &
+     (RARELY > (sums["Median", "RARELY"]-offset) & RARELY < (sums["Median", "RARELY"]+offset)) &
+     (SOMETIMES > (sums["Median", "SOMETIMES"]-offset) & SOMETIMES < (sums["Median", "SOMETIMES"]+offset)) &
+     (FREQUENTLY > (sums["Median", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Median", "FREQUENTLY"]+offset)) &
+     (ALWAYS > (sums["Median", "ALWAYS"]-offset) & ALWAYS < (sums["Median", "ALWAYS"]+offset)), FIPS]
+median
+
+# Finding the upper bound county
+offset <- .115
+upper <- dt[(TotalCases > (sums["Q3", "TotalCases"]-offset) & TotalCases < (sums["Q3", "TotalCases"]+offset)) &
+     (county_population > (sums["Q3", "county_population"]-offset) & county_population < (sums["Q3", "county_population"]+offset)) &
+     (popDensity > (sums["Q3", "popDensity"]-(offset*.01)) & popDensity < (sums["Q3", "popDensity"]+(offset*.01))) &
+     (NEVER > (sums["Q3", "NEVER"]-offset) & NEVER < (sums["Q3", "NEVER"]+offset)) &
+     (RARELY > (sums["Q3", "RARELY"]-offset) & RARELY < (sums["Q3", "RARELY"]+offset)) &
+     (SOMETIMES > (sums["Q3", "SOMETIMES"]-offset) & SOMETIMES < (sums["Q3", "SOMETIMES"]+offset)) &
+     (FREQUENTLY > (sums["Q3", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Q3", "FREQUENTLY"]+offset)) &
+     (ALWAYS > (sums["Q3", "ALWAYS"]-offset) & ALWAYS < (sums["Q3", "ALWAYS"]+offset)), FIPS]
+upper
+```
+
+
+```{r}
+dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
+# Show data for most representative counties
+# Find cases per density
+df[FIPS %in% c(lower, median, upper), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
 ```
 

@@ -38,8 +38,9 @@ head(pop)
 cases[, FIPS := sprintf("%05d", cases[,FIPS])]
 pop[, FIPS := sprintf("%02d%03d", pop[,STATE], pop[,COUNTY])]
 # create a population density column too
-distancing[, c("FIPS", "popDensity") := .(sprintf("%05d", county_fips), county_population / Shape__Area)]
+distancing[, c("FIPS", "popDensity") := .(sprintf("%05d", county_fips), ((county_population / Shape__Area * 100) + 1))]
 masking[, FIPS := sprintf("%05d", COUNTYFP)]
+masking <- cbind("FIPS" = masking[, FIPS], masking[,!c("FIPS")] + 1)
 ```
 
 
@@ -57,6 +58,9 @@ masking <- masking[, !c("COUNTYFP")]
 
 ```{r}
 totalCases <- grep("[0-9]{4}", colnames(cases))
+# Overall total
+cases[, TotalCases := rowSums(cases[, ..totalCases], na.rm = TRUE)]
+# Total before vaccinations
 cases[, TotalCases := rowSums(cases[, ..totalCases], na.rm = TRUE)]
 ```
 
@@ -86,7 +90,7 @@ setkey(pop, FIPS)
 
 
 ```{r}
-pivot_wider(vaccineCounty, names_from = Date, values_from = )
+# pivot_wider(vaccineCounty, names_from = Date, values_from = )
 ```
 
 
