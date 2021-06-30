@@ -21,61 +21,751 @@ normalize <- function(x) {
 
 
 ```{r}
-dt <- df[, .(TotalCases, county_population, grade_total, popDensity, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)]
+dt <- df[, .(TotalCases, TotalCasesVaccines, county_population, grade_total, popDensity, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)][, Spread := (TotalCases / (popDensity-1))]
 # dt <- dt[, c("TotalCases", "county_population","popDensity", "grade_total") := 
 #            .(log(TotalCases), log(county_population), log(popDensity) * 10000, grade_total * 10)]
 dt <- data.table(apply(dt[TotalCases > -Inf,], 2, normalize))
 # dt <- normalize(dt[TotalCases > -Inf,])
 dt[, FIPS := df[TotalCases > -Inf ,FIPS]]
-sums <- data.frame(do.call(cbind, lapply(dt[,.(TotalCases, county_population, grade_total, popDensity, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)], summary)))
+sums <- data.frame(do.call(cbind, lapply(dt[,.(TotalCases, TotalCasesVaccines, county_population, grade_total, popDensity, Spread, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)], summary)))
 rownames(sums) <- c("Min", "Q1", "Median", "Mean", "Q3", "Max")
 sums
 ```
 
 
 ```{r}
+goal <- 2
 # Finding the lower bound county
-offset <- .137
-lower <- dt[(TotalCases > (sums["Q1", "TotalCases"]-offset) & TotalCases < (sums["Q1", "TotalCases"]+offset)) & 
-     (county_population > (sums["Q1", "county_population"]-offset) & county_population < (sums["Q1", "county_population"]+offset)) & 
-     (popDensity > (sums["Q1", "popDensity"]-(offset*.01)) & popDensity < (sums["Q1", "popDensity"]+(offset*.01))) &
-     (NEVER > (sums["Q1", "NEVER"]-offset) & NEVER < (sums["Q1", "NEVER"]+offset)) &
-     (RARELY > (sums["Q1", "RARELY"]-offset) & RARELY < (sums["Q1", "RARELY"]+offset)) &
-     (SOMETIMES > (sums["Q1", "SOMETIMES"]-offset) & SOMETIMES < (sums["Q1", "SOMETIMES"]+offset)) &
-     (FREQUENTLY > (sums["Q1", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Q1", "FREQUENTLY"]+offset)) &
-     (ALWAYS > (sums["Q1", "ALWAYS"]-offset) & ALWAYS < (sums["Q1", "ALWAYS"]+offset)), FIPS]
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1000
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    lower <-
+      dt[(TotalCases > (sums["Q1", "TotalCases"] * 1000 - offset) &
+            TotalCases < (sums["Q1", "TotalCases"] * 1000 + offset)) &
+           (TotalCasesVaccines > (sums["Q1", "TotalCasesVaccines"] * 1000 - offset) &
+            TotalCasesVaccines < (sums["Q1", "TotalCasesVaccines"] * 1000 + offset)) &
+           (county_population > (sums["Q1", "county_population"] * 100 - offset) &
+              county_population < (sums["Q1", "county_population"] * 100 + offset)) &
+           (popDensity > (sums["Q1", "popDensity"] * 1000 - offset) &
+              popDensity < (sums["Q1", "popDensity"] * 1000 + offset)) &
+           (grade_total > (sums["Q1", "grade_total"] - offset) &
+              grade_total < (sums["Q1", "grade_total"] + offset)) &
+           (Spread > (sums["Q1", "Spread"] * 1000 - offset) &
+              Spread < (sums["Q1", "Spread"] * 1000 + offset)) &
+           (NEVER > (sums["Q1", "NEVER"] * 10 - offset) &
+              NEVER < (sums["Q1", "NEVER"] * 10 + offset)) &
+           (RARELY > (sums["Q1", "RARELY"] - offset) &
+              RARELY < (sums["Q1", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q1", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q1", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q1", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q1", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q1", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q1", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(lower) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(lower) < goal)
+      break
+    if(length(lower) < len) {
+      len <- length(lower)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
 lower
+Sys.time() - old
 
+
+goal <- 2
 # Finding the median county
-offset <- .034
-median <- dt[(TotalCases > (sums["Median", "TotalCases"]-offset) & TotalCases < (sums["Median", "TotalCases"]+offset)) &
-     (county_population > (sums["Median", "county_population"]-offset) & county_population < (sums["Median", "county_population"]+offset)) &
-     (popDensity > (sums["Median", "popDensity"]-offset) & popDensity < (sums["Median", "popDensity"]+offset)) &
-     (NEVER > (sums["Median", "NEVER"]-offset) & NEVER < (sums["Median", "NEVER"]+offset)) &
-     (RARELY > (sums["Median", "RARELY"]-offset) & RARELY < (sums["Median", "RARELY"]+offset)) &
-     (SOMETIMES > (sums["Median", "SOMETIMES"]-offset) & SOMETIMES < (sums["Median", "SOMETIMES"]+offset)) &
-     (FREQUENTLY > (sums["Median", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Median", "FREQUENTLY"]+offset)) &
-     (ALWAYS > (sums["Median", "ALWAYS"]-offset) & ALWAYS < (sums["Median", "ALWAYS"]+offset)), FIPS]
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1000
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    median <-
+      dt[(TotalCases > (sums["Median", "TotalCases"] * 100 - offset) &
+            TotalCases < (sums["Median", "TotalCases"] * 100 + offset)) &
+           (TotalCasesVaccines > (sums["Median", "TotalCasesVaccines"] * 100 - offset) &
+            TotalCasesVaccines < (sums["Median", "TotalCasesVaccines"] * 100 + offset)) &
+           (county_population > (sums["Median", "county_population"] * 100 - offset) &
+              county_population < (sums["Median", "county_population"] * 100 + offset)) &
+           (popDensity > (sums["Median", "popDensity"] * 1000 - offset) &
+              popDensity < (sums["Median", "popDensity"] * 1000 + offset)) &
+           (grade_total > (sums["Median", "grade_total"] - offset) &
+              grade_total < (sums["Median", "grade_total"] + offset)) &
+           (Spread > (sums["Median", "Spread"] * 100 - offset) &
+              Spread < (sums["Median", "Spread"] * 100 + offset)) &
+           (NEVER > (sums["Median", "NEVER"] - offset) &
+              NEVER < (sums["Median", "NEVER"] + offset)) &
+           (RARELY > (sums["Median", "RARELY"] - offset) &
+              RARELY < (sums["Median", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Median", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Median", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Median", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Median", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Median", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Median", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(median) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(median) < goal)
+      break
+    if(length(median) != 0 & length(median) < len) {
+      len <- length(median)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
 median
+Sys.time() - old
 
+
+goal <- 3
 # Finding the upper bound county
-offset <- .115
-upper <- dt[(TotalCases > (sums["Q3", "TotalCases"]-offset) & TotalCases < (sums["Q3", "TotalCases"]+offset)) &
-     (county_population > (sums["Q3", "county_population"]-offset) & county_population < (sums["Q3", "county_population"]+offset)) &
-     (popDensity > (sums["Q3", "popDensity"]-(offset*.01)) & popDensity < (sums["Q3", "popDensity"]+(offset*.01))) &
-     (NEVER > (sums["Q3", "NEVER"]-offset) & NEVER < (sums["Q3", "NEVER"]+offset)) &
-     (RARELY > (sums["Q3", "RARELY"]-offset) & RARELY < (sums["Q3", "RARELY"]+offset)) &
-     (SOMETIMES > (sums["Q3", "SOMETIMES"]-offset) & SOMETIMES < (sums["Q3", "SOMETIMES"]+offset)) &
-     (FREQUENTLY > (sums["Q3", "FREQUENTLY"]-offset) & FREQUENTLY < (sums["Q3", "FREQUENTLY"]+offset)) &
-     (ALWAYS > (sums["Q3", "ALWAYS"]-offset) & ALWAYS < (sums["Q3", "ALWAYS"]+offset)), FIPS]
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1000
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    upper <-
+      dt[(TotalCases > (sums["Q3", "TotalCases"] * 100 - offset) &
+            TotalCases < (sums["Q3", "TotalCases"] * 100 + offset)) &
+           (TotalCasesVaccines > (sums["Q3", "TotalCasesVaccines"] * 100 - offset) &
+            TotalCasesVaccines < (sums["Q3", "TotalCasesVaccines"] * 100 + offset)) &
+           (county_population > (sums["Q3", "county_population"] * 100 - offset) &
+              county_population < (sums["Q3", "county_population"] * 100 + offset)) &
+           (popDensity > (sums["Q3", "popDensity"] * 100 - offset) &
+              popDensity < (sums["Q3", "popDensity"] * 100 + offset)) &
+           (grade_total > (sums["Q3", "grade_total"] - offset) &
+              grade_total < (sums["Q3", "grade_total"] + offset)) &
+           (Spread > (sums["Q3", "Spread"] * 100 - offset) &
+              Spread < (sums["Q3", "Spread"] * 100 + offset)) &
+           (NEVER > (sums["Q3", "NEVER"] - offset) &
+              NEVER < (sums["Q3", "NEVER"] + offset)) &
+           (RARELY > (sums["Q3", "RARELY"] - offset) &
+              RARELY < (sums["Q3", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q3", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q3", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q3", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q3", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q3", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q3", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(upper) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(upper) < goal)
+      break
+    if(length(upper) != 0 & length(upper) < len) {
+      len <- length(upper)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
 upper
+Sys.time() - old
+
+goal <- 2
+# Finding the mean county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1000
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    mean <-
+      dt[(TotalCases > (sums["Mean", "TotalCases"] * 100 - offset) &
+            TotalCases < (sums["Mean", "TotalCases"] * 100 + offset)) &
+           (TotalCasesVaccines > (sums["Mean", "TotalCasesVaccines"] * 100 - offset) &
+            TotalCasesVaccines < (sums["Mean", "TotalCasesVaccines"] * 100 + offset)) &
+           (county_population > (sums["Mean", "county_population"] * 10 - offset) &
+              county_population < (sums["Mean", "county_population"] * 10 + offset)) &
+           (popDensity > (sums["Mean", "popDensity"] * 100 - offset) &
+              popDensity < (sums["Mean", "popDensity"] * 100 + offset)) &
+           (grade_total > (sums["Mean", "grade_total"] - offset) &
+              grade_total < (sums["Mean", "grade_total"] + offset)) &
+           (Spread > (sums["Mean", "Spread"] * 100 - offset) &
+              Spread < (sums["Mean", "Spread"] * 100 + offset)) &
+           (NEVER > (sums["Mean", "NEVER"] - offset) &
+              NEVER < (sums["Mean", "NEVER"] + offset)) &
+           (RARELY > (sums["Mean", "RARELY"] - offset) &
+              RARELY < (sums["Mean", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Mean", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Mean", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Mean", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Mean", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Mean", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Mean", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(mean) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(mean) < goal)
+      break
+    if(length(mean) != 0 & length(mean) < len) {
+      len <- length(mean)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+mean
+Sys.time() - old
+
+countySelection <- c(lower, median, upper, mean)
+dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
+# Show data for most representative counties
+# Find cases per density
+df[FIPS %in% c(lower, median, upper, mean), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
 ```
 
 
 ```{r}
+goal <- 2
+# Finding the lower bound county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    lower <-
+      dt[(TotalCases > (sums["Q1", "TotalCases"] - offset) &
+            TotalCases < (sums["Q1", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Q1", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Q1", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Q1", "county_population"] - offset) &
+              county_population < (sums["Q1", "county_population"] + offset)) &
+           (popDensity > (sums["Q1", "popDensity"] - offset) &
+              popDensity < (sums["Q1", "popDensity"]+ offset)) &
+           (grade_total > (sums["Q1", "grade_total"] - offset) &
+              grade_total < (sums["Q1", "grade_total"] + offset)) &
+           (Spread > (sums["Q1", "Spread"] - offset) &
+              Spread < (sums["Q1", "Spread"] + offset)) &
+           (NEVER > (sums["Q1", "NEVER"] - offset) &
+              NEVER < (sums["Q1", "NEVER"] + offset)) &
+           (RARELY > (sums["Q1", "RARELY"] - offset) &
+              RARELY < (sums["Q1", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q1", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q1", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q1", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q1", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q1", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q1", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(lower) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(lower) < goal)
+      break
+    if(length(lower) < len) {
+      len <- length(lower)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+lower
+Sys.time() - old
+
+
+goal <- 2
+# Finding the median county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    median <-
+      dt[(TotalCases > (sums["Median", "TotalCases"] - offset) &
+            TotalCases < (sums["Median", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Median", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Median", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Median", "county_population"] - offset) &
+              county_population < (sums["Median", "county_population"] + offset)) &
+           (popDensity > (sums["Median", "popDensity"] - offset) &
+              popDensity < (sums["Median", "popDensity"] + offset)) &
+           (grade_total > (sums["Median", "grade_total"] - offset) &
+              grade_total < (sums["Median", "grade_total"] + offset)) &
+           (Spread > (sums["Median", "Spread"] - offset) &
+              Spread < (sums["Median", "Spread"] + offset)) &
+           (NEVER > (sums["Median", "NEVER"] - offset) &
+              NEVER < (sums["Median", "NEVER"] + offset)) &
+           (RARELY > (sums["Median", "RARELY"] - offset) &
+              RARELY < (sums["Median", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Median", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Median", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Median", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Median", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Median", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Median", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(median) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(median) < goal)
+      break
+    if(length(median) != 0 & length(median) < len) {
+      len <- length(median)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+median
+Sys.time() - old
+
+
+goal <- 2
+# Finding the upper bound county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    upper <-
+      dt[(TotalCases > (sums["Q3", "TotalCases"] - offset) &
+            TotalCases < (sums["Q3", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Q3", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Q3", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Q3", "county_population"] - offset) &
+              county_population < (sums["Q3", "county_population"] + offset)) &
+           (popDensity > (sums["Q3", "popDensity"] - offset) &
+              popDensity < (sums["Q3", "popDensity"] + offset)) &
+           (grade_total > (sums["Q3", "grade_total"] - offset) &
+              grade_total < (sums["Q3", "grade_total"] + offset)) &
+           (Spread > (sums["Q3", "Spread"] - offset) &
+              Spread < (sums["Q3", "Spread"] + offset)) &
+           (NEVER > (sums["Q3", "NEVER"] - offset) &
+              NEVER < (sums["Q3", "NEVER"] + offset)) &
+           (RARELY > (sums["Q3", "RARELY"] - offset) &
+              RARELY < (sums["Q3", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q3", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q3", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q3", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q3", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q3", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q3", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(upper) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(upper) < goal)
+      break
+    if(length(upper) != 0 & length(upper) < len) {
+      len <- length(upper)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+upper
+Sys.time() - old
+
+goal <- 2
+# Finding the mean county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(dt)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    mean <-
+      dt[(TotalCases > (sums["Mean", "TotalCases"] - offset) &
+            TotalCases < (sums["Mean", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Mean", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Mean", "TotalCasesVaccines"]  + offset)) &
+           (county_population > (sums["Mean", "county_population"] - offset) &
+              county_population < (sums["Mean", "county_population"] + offset)) &
+           (popDensity > (sums["Mean", "popDensity"] - offset) &
+              popDensity < (sums["Mean", "popDensity"] + offset)) &
+           (grade_total > (sums["Mean", "grade_total"] - offset) &
+              grade_total < (sums["Mean", "grade_total"] + offset)) &
+           (Spread > (sums["Mean", "Spread"] - offset) &
+              Spread < (sums["Mean", "Spread"] + offset)) &
+           (NEVER > (sums["Mean", "NEVER"] - offset) &
+              NEVER < (sums["Mean", "NEVER"] + offset)) &
+           (RARELY > (sums["Mean", "RARELY"] - offset) &
+              RARELY < (sums["Mean", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Mean", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Mean", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Mean", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Mean", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Mean", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Mean", "ALWAYS"] + offset))
+         , FIPS]
+    if (length(mean) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(mean) < goal)
+      break
+    if(length(mean) != 0 & length(mean) < len) {
+      len <- length(mean)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+mean
+Sys.time() - old
+
+countySelection <- append(countySelection, c(lower, median, upper, mean))
 dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
 # Show data for most representative counties
 # Find cases per density
-df[FIPS %in% c(lower, median, upper), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
+df[FIPS %in% c(lower, median, upper, mean), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
+```
+
+
+```{r}
+countiesPer <- data.table(table(df[,ProvinceState]))
+colnames(countiesPer) <- c("ProvinceState", "Counties")
+states <- unique(dt[df[,.(FIPS, ProvinceState)], on = "FIPS"][
+  countiesPer[,.(ProvinceState, Counties)], on = "ProvinceState"][
+    ,.(TotalCases = sum(TotalCases),
+       TotalCasesVaccines = sum(TotalCasesVaccines) / Counties,
+       county_population = sum(county_population) / Counties,
+       popDensity = sum(popDensity) / Counties,
+       grade_total = sum(grade_total) / Counties,
+       Spread = sum(Spread) / Counties,
+       NEVER = sum(NEVER) / Counties,
+       RARELY = sum(RARELY) / Counties,
+       SOMETIMES = sum(SOMETIMES) / Counties,
+       FREQUENTLY = sum(FREQUENTLY) / Counties,
+       ALWAYS = sum(ALWAYS) / Counties
+       ), by = "ProvinceState"])
+states
+
+withState <- states
+states <- data.table(apply(states[TotalCases > -Inf, !c("ProvinceState")], 2, normalize))
+# states <- normalize(states[TotalCases > -Inf,])
+states[, ProvinceState := withState[TotalCases > -Inf , ProvinceState]]
+sums <- data.frame(do.call(cbind, lapply(states[,.(TotalCases, TotalCasesVaccines, county_population, grade_total, popDensity, Spread, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)], summary)))
+rownames(sums) <- c("Min", "Q1", "Median", "Mean", "Q3", "Max")
+sums
+```
+
+```{r}
+goal <- 1
+# Finding the lower bound county
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(states)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    lower <-
+      states[(TotalCases > (sums["Q1", "TotalCases"] - offset) &
+            TotalCases < (sums["Q1", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Q1", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Q1", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Q1", "county_population"] - offset) &
+              county_population < (sums["Q1", "county_population"] + offset)) &
+           (popDensity > (sums["Q1", "popDensity"] - (offset * .01)) &
+              popDensity < (sums["Q1", "popDensity"] + (offset * .01))) &
+           (grade_total > (sums["Q1", "grade_total"] - offset) &
+              grade_total < (sums["Q1", "grade_total"] + offset)) &
+           (Spread > (sums["Q1", "Spread"] - offset) &
+              Spread < (sums["Q1", "Spread"]) + offset) &
+           (NEVER > (sums["Q1", "NEVER"] - offset) &
+              NEVER < (sums["Q1", "NEVER"] + offset)) &
+           (RARELY > (sums["Q1", "RARELY"] - offset) &
+              RARELY < (sums["Q1", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q1", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q1", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q1", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q1", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q1", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q1", "ALWAYS"] + offset))
+         , ProvinceState]
+    if (length(lower) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(lower) < goal)
+      break
+    if(length(lower) < len) {
+      len <- length(lower)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+lower
+Sys.time() - old
+
+
+# Finding the median county
+goal <- 1
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(states)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    median <-
+      states[(TotalCases > (sums["Median", "TotalCases"] - offset) &
+            TotalCases < (sums["Median", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Median", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Median", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Median", "county_population"] - offset) &
+              county_population < (sums["Median", "county_population"] + offset)) &
+           (popDensity > (sums["Median", "popDensity"] - (offset * .01)) &
+              popDensity < (sums["Median", "popDensity"] + (offset * .01))) &
+           (grade_total > (sums["Median", "grade_total"] - offset) &
+              grade_total < (sums["Median", "grade_total"] + offset)) &
+           (Spread > (sums["Median", "Spread"] - offset) &
+              Spread < (sums["Median", "Spread"]) + offset) &
+           (NEVER > (sums["Median", "NEVER"] - offset) &
+              NEVER < (sums["Median", "NEVER"] + offset)) &
+           (RARELY > (sums["Median", "RARELY"] - offset) &
+              RARELY < (sums["Median", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Median", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Median", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Median", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Median", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Median", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Median", "ALWAYS"] + offset))
+         , ProvinceState]
+    if (length(median) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(median) < goal)
+      break
+    if(length(median) != 0 & length(median) < len) {
+      len <- length(median)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+median
+Sys.time() - old
+
+
+# Finding the upper bound county
+goal <- 2
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(states)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    upper <-
+      states[(TotalCases > (sums["Q3", "TotalCases"] - offset) &
+            TotalCases < (sums["Q3", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Q3", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Q3", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Q3", "county_population"] - offset) &
+              county_population < (sums["Q3", "county_population"] + offset)) &
+           (popDensity > (sums["Q3", "popDensity"] - (offset * .01)) &
+              popDensity < (sums["Q3", "popDensity"] + (offset * .01))) &
+           (grade_total > (sums["Q3", "grade_total"] - offset) &
+              grade_total < (sums["Q3", "grade_total"] + offset)) &
+           (Spread > (sums["Q3", "Spread"] - offset) &
+              Spread < (sums["Q3", "Spread"]) + offset) &
+           (NEVER > (sums["Q3", "NEVER"] - offset) &
+              NEVER < (sums["Q3", "NEVER"] + offset)) &
+           (RARELY > (sums["Q3", "RARELY"] - offset) &
+              RARELY < (sums["Q3", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Q3", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Q3", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Q3", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Q3", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Q3", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Q3", "ALWAYS"] + offset))
+         , ProvinceState]
+    if (length(upper) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(upper) < goal)
+      break
+    if(length(upper) != 0 & length(upper) < len) {
+      len <- length(upper)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+upper
+Sys.time() - old
+
+
+# Finding the mean county
+goal <- 1
+old <- Sys.time()
+breakFlag <- FALSE
+place <- 1
+len <- nrow(states)
+maxOffset <- 1
+offFlag <- FALSE
+while (!breakFlag) {
+  print(maxOffset)
+  for (offset in seq(maxOffset, 0, by = -place)) {
+    mean <-
+      states[(TotalCases > (sums["Mean", "TotalCases"] - offset) &
+            TotalCases < (sums["Mean", "TotalCases"] + offset)) &
+           (TotalCasesVaccines > (sums["Mean", "TotalCasesVaccines"] - offset) &
+            TotalCasesVaccines < (sums["Mean", "TotalCasesVaccines"] + offset)) &
+           (county_population > (sums["Mean", "county_population"] - offset) &
+              county_population < (sums["Mean", "county_population"] + offset)) &
+           (popDensity > (sums["Mean", "popDensity"] - (offset * .01)) &
+              popDensity < (sums["Mean", "popDensity"] + (offset * .01))) &
+           (grade_total > (sums["Mean", "grade_total"] - offset) &
+              grade_total < (sums["Mean", "grade_total"] + offset)) &
+           (Spread > (sums["Mean", "Spread"] - offset) &
+              Spread < (sums["Mean", "Spread"]) + offset) &
+           (NEVER > (sums["Mean", "NEVER"] - offset) &
+              NEVER < (sums["Mean", "NEVER"] + offset)) &
+           (RARELY > (sums["Mean", "RARELY"] - offset) &
+              RARELY < (sums["Mean", "RARELY"] + offset)) &
+           (SOMETIMES > (sums["Mean", "SOMETIMES"] - offset) &
+              SOMETIMES < (sums["Mean", "SOMETIMES"] + offset)) &
+           (FREQUENTLY > (sums["Mean", "FREQUENTLY"] - offset) &
+              FREQUENTLY < (sums["Mean", "FREQUENTLY"] + offset)) &
+           (ALWAYS > (sums["Mean", "ALWAYS"] - offset) &
+              ALWAYS < (sums["Mean", "ALWAYS"] + offset))
+         , ProvinceState]
+    if (length(mean) == goal) {
+      breakFlag <- TRUE
+      break
+    } else if(length(mean) < goal)
+      break
+    if(length(mean) != 0 & length(mean) < len) {
+      len <- length(mean)
+      maxOff <- offset
+      offFlag <- TRUE
+    }
+  }
+  if(offFlag) {
+  maxOffset <- maxOff + place
+  offFlag <- FALSE
+  }
+  place <- place / 10
+}
+mean
+Sys.time() - old
+
+dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
+# Show data for most representative counties
+# Find cases per density
+stateSelection <- c(lower, median, upper, mean)
+df[ProvinceState %in% c(lower, median, upper, mean), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
+```
+
+
+```{r}
+countySelection
+stateSelection
+
+countyDT <- df[FIPS %in% countySelection]
+stateDT <- df[ProvinceState %in% stateSelection]
+
+countyDT <- data.table(t(countyDT))
+stateDT <- data.table(t(stateDT))
+
+fwrite(countyDT, "countyDT.csv")
+fwrite(stateDT, "stateDT.csv")
 ```
 

@@ -57,11 +57,15 @@ masking <- masking[, !c("COUNTYFP")]
 
 
 ```{r}
-totalCases <- grep("[0-9]{4}", colnames(cases))
 # Overall total
+totalCases <- grep("[0-9]{4}", colnames(cases))
 cases[, TotalCases := rowSums(cases[, ..totalCases], na.rm = TRUE)]
 # Total before vaccinations
-cases[, TotalCases := rowSums(cases[, ..totalCases], na.rm = TRUE)]
+# 22 January 2020 - 30 November 2020
+# https://www.washingtonpost.com/nation/2020/12/14/first-covid-vaccines-new-york/
+totalCases <- totalCases[1:314]
+cases[, TotalCasesVaccines := rowSums(cases[, ..totalCases], na.rm = TRUE)]
+head(cases)
 ```
 
 

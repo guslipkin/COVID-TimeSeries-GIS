@@ -1,0 +1,14 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(data.table)
+library(rNOMADS)
+```
+
+```{r}
+ReadGrib("/Users/guslipkin/Documents/COVID-TimeSeries-GIS/Data/Copernicus/adaptor.mars.internal-1625062277.1199002-31982-7-46447c71-b2e9-4d9b-863a-2cc60ae19671.grib")
+```
+
