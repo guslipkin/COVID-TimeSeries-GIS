@@ -1,0 +1,2 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata xml:lang="en"><Esri><CreaDate>20210630</CreaDate><CreaTime>15004800</CreaTime><ArcGISFormat>1.0</ArcGISFormat><SyncOnce>TRUE</SyncOnce><DataProperties><lineage><Process ToolSource="c:\program files (x86)\arcgis\desktop10.8\ArcToolbox\Toolboxes\Spatial Analyst Tools.tbx\ExtractMultiValuesToPoints" Date="20210630" Time="150048">ExtractMultiValuesToPoints SelectedCountyPoints "AirTemp AirTemp;Precip Precip;WaterVolume WaterVolum" NONE</Process></lineage></DataProperties></Esri></metadata>

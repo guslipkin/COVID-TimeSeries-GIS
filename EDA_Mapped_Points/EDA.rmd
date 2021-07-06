@@ -762,8 +762,8 @@ stateSelection
 countyDT <- df[FIPS %in% countySelection]
 stateDT <- df[ProvinceState %in% stateSelection]
 
-countyDT <- data.table(t(countyDT))
-stateDT <- data.table(t(stateDT))
+# countyDT <- data.table(t(countyDT))
+# stateDT <- data.table(t(stateDT))
 
 fwrite(countyDT, "countyDT.csv")
 fwrite(stateDT, "stateDT.csv")
