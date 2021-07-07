@@ -8,6 +8,8 @@ library(plm)
 library(tidyverse)
 library(data.table)
 library(broom)
+library(rlist)
+library(openxlsx)
 df <- fread("../Data/casesPopDistancingMasking.csv")
 head(df)
 ```
@@ -34,7 +36,7 @@ sums
 
 
 ```{r}
-goal <- 2
+goal <- 5
 # Finding the lower bound county
 old <- Sys.time()
 breakFlag <- FALSE
@@ -90,7 +92,7 @@ lower
 Sys.time() - old
 
 
-goal <- 2
+goal <- 5
 # Finding the median county
 old <- Sys.time()
 breakFlag <- FALSE
@@ -146,7 +148,7 @@ median
 Sys.time() - old
 
 
-goal <- 3
+goal <- 6
 # Finding the upper bound county
 old <- Sys.time()
 breakFlag <- FALSE
@@ -257,15 +259,16 @@ mean
 Sys.time() - old
 
 countySelection <- c(lower, median, upper, mean)
+countySelection <- countySelection[!(countySelection %in% c(36047, 36081, 36005, 4013, 6071, 6073, 6029, 6059, 32003, 48201))]
 dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
 # Show data for most representative counties
 # Find cases per density
-df[FIPS %in% c(lower, median, upper, mean), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
+df[FIPS %in% countySelection, !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)][order(county_population)]
 ```
 
 
 ```{r}
-goal <- 2
+goal <- 4
 # Finding the lower bound county
 old <- Sys.time()
 breakFlag <- FALSE
@@ -377,7 +380,7 @@ median
 Sys.time() - old
 
 
-goal <- 2
+goal <- 4
 # Finding the upper bound county
 old <- Sys.time()
 breakFlag <- FALSE
@@ -488,10 +491,11 @@ mean
 Sys.time() - old
 
 countySelection <- append(countySelection, c(lower, median, upper, mean))
+countySelection <- unique(countySelection[!(countySelection %in% c(48253, 48289, 48353, 13053, 21049))])
 dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
 # Show data for most representative counties
 # Find cases per density
-df[FIPS %in% c(lower, median, upper, mean), !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)]
+df[FIPS %in% countySelection, !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)][order(county_population)]
 ```
 
 
@@ -522,6 +526,7 @@ sums <- data.frame(do.call(cbind, lapply(states[,.(TotalCases, TotalCasesVaccine
 rownames(sums) <- c("Min", "Q1", "Median", "Mean", "Q3", "Max")
 sums
 ```
+
 
 ```{r}
 goal <- 1
@@ -767,5 +772,21 @@ stateDT <- df[ProvinceState %in% stateSelection]
 
 fwrite(countyDT, "countyDT.csv")
 fwrite(stateDT, "stateDT.csv")
+```
+
+
+```{r}
+dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}", colnames(countyDT))
+countyList <- list()
+for(i in countySelection) {
+  countyList <- list.append(countyList, t(countyDT[FIPS == i, ..dates, drop = FALSE]))
+}
+
+```
+
+
+```{r}
+for(i in 1:length(countyList))
+  write.xlsx(countyList[i], paste0("../Data/IndividualCounties/", countySelection[i], ".xlsx"), overwrite = TRUE)
 ```
 
