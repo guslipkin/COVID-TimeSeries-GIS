@@ -782,16 +782,16 @@ for(i in countySelection)
   countyList <- list.append(countyList, t(countyDT[FIPS == i, ..dates, drop = FALSE]))
 
 for(i in 1:length(countyList)) {
-  countyList[[i]] <- data.table(date = seq(from = as.Date("2020-01-022"), to = as.Date("2021-06-07"), by = 'day'), totalCases = countyList[[i]])
+  countyList[[i]] <- data.table(date = seq.Date(from = as.Date("2020-01-22"), by = 1, along.with = countyList[[i]]), totalCases = countyList[[i]])
   countyList[[i]] <- countyList[[i]][, c("month", "year", "totalCases") := .(month(date), year(date), totalCases.V1)][, !c("totalCases.V1")]
   countyList[[i]] <- countyList[[i]][, newCases := c(0, diff(countyList[[i]][[4]]))]
   countyList[[i]] <- countyList[[i]] %>%
-    group_by(month, year) %>%
-    summarise(meanNewCases = mean(newCases)) %>%
-    filter(year == 2020)
+    arrange(date) %>%
+    filter(year == 2020) %>%
+    group_by(year, month) %>%
+    summarise(meanNewCases = mean(newCases), totalNewCases = sum(newCases)) %>%
+    arrange(year, month)
 }
-
-countyList[[1]]
 ```
 
 
@@ -801,10 +801,15 @@ monthSoil <- data.table(t(data.table(read.xlsx("../Data/FinalCountiesMonthlySoil
 monthPrecip <- data.table(t(data.table(read.xlsx("../Data/FinalCountiesMonthlyPrecip.xlsx"))[,7:18]))
 
 for(i in 1:length(countyList)) {
-  countyList[[i]] <- data.table(meanNewCases = countyList[[i]])[, c("temp", "soil", "precip") := .(monthTemp[[i]], monthSoil[[i]], monthPrecip[[i]])]
+  countyList[[i]] <- data.table(month = countyList[[i]][[1]],
+                                year = countyList[[i]][[2]],
+                                meanNewCases = countyList[[i]][[3]],
+                                totalNewCases = countyList[[i]][[4]])[, c("temp", "soil", "precip") := .(monthTemp[[i]], monthSoil[[i]], monthPrecip[[i]])]
 }
 
 for(i in 1:length(countyList))
   write.xlsx(countyList[[i]], paste0("../Data/IndividualCounties/", countySelection[i], ".xlsx"), overwrite = TRUE)
+
+countyList[[1]]
 ```
 
