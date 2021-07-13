@@ -792,6 +792,8 @@ for(i in 1:length(countyList)) {
     summarise(meanNewCases = mean(newCases), totalNewCases = sum(newCases)) %>%
     arrange(year, month)
 }
+
+ts <- countyDT[FIPS == countySelection[i], .(grade_total, grade_distance, grade_visitation, grade_encounters, NEVER, RARELY, SOMETIMES, FREQUENTLY, ALWAYS)][rep(seq_len(1), each = 12),][, month := 1:12]
 ```
 
 
@@ -801,10 +803,22 @@ monthSoil <- data.table(t(data.table(read.xlsx("../Data/FinalCountiesMonthlySoil
 monthPrecip <- data.table(t(data.table(read.xlsx("../Data/FinalCountiesMonthlyPrecip.xlsx"))[,7:18]))
 
 for(i in 1:length(countyList)) {
-  countyList[[i]] <- data.table(month = countyList[[i]][[1]],
-                                year = countyList[[i]][[2]],
+  countyList[[i]] <- data.table(year = countyList[[i]][[1]],
+                                month = countyList[[i]][[2]],
                                 meanNewCases = countyList[[i]][[3]],
                                 totalNewCases = countyList[[i]][[4]])[, c("temp", "soil", "precip") := .(monthTemp[[i]], monthSoil[[i]], monthPrecip[[i]])]
+  countyList[[i]] <-
+    merge(countyList[[i]], countyDT[FIPS == countySelection[i], .(
+      grade_total,
+      grade_distance,
+      grade_visitation,
+      grade_encounters,
+      NEVER,
+      RARELY,
+      SOMETIMES,
+      FREQUENTLY,
+      ALWAYS
+    )][rep(seq_len(1), each = 12), ][, month := 1:12], all = TRUE, by = "month")
 }
 
 for(i in 1:length(countyList))
