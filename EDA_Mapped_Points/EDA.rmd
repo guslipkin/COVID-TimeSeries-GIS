@@ -823,7 +823,16 @@ for(i in 1:length(countyList)) {
 
 for(i in 1:length(countyList))
   write.xlsx(countyList[[i]], paste0("../Data/IndividualCounties/", countySelection[i], ".xlsx"), overwrite = TRUE)
+```
 
-countyList[[1]]
+
+```{r}
+for(i in 1:10) {
+  print(countySelection[[i]])
+  print(summary(lm(totalNewCases ~ temp + soil + precip, countyList[[i]])))
+}
+
+print(summary(lm(totalNewCases ~ temp + soil + precip, do.call(rbind, countyList))))
+countyList[[i]]
 ```
 
