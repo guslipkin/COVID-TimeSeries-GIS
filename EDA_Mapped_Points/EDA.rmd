@@ -495,7 +495,7 @@ countySelection <- unique(countySelection[!(countySelection %in% c(48253, 48289,
 dates <- grep("D[0-9]{4}_[0-9]{2}_[0-9]{2}|2019", colnames(df))
 # Show data for most representative counties
 # Find cases per density
-df[FIPS %in% countySelection, !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)][order(county_population)]
+df[FIPS %in% countySelection, !..dates][,.(FIPS, Admin2, ProvinceState, Lat, Long, TotalCases, Shape__Area, popDensity, county_population)][order(ProvinceState, Admin2)]
 ```
 
 
